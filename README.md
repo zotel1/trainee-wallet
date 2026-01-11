@@ -70,6 +70,23 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+### UPDATES: ###
+
+## Database (PostgreSQL via Docker)
+
+Start:
+```bash
+docker compose up -d
+
+Stop database:
+docker compose down
+
+View logs:
+docker logs -f trainee_wallet_postgres
+
+```
+
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:
