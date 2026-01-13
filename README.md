@@ -86,6 +86,34 @@ docker logs -f trainee_wallet_postgres
 
 ```
 
+## Database & Prisma
+
+This project uses PostgreSQL (via Docker) and Prisma ORM (v7)
+
+### Requirements
+- Docker & Docker Compose
+- Node.js 18+
+
+### Start PostgreSQL
+```bash
+docker compose up -d
+
+Create a .env file base on .env.example
+
+Generate Prisma Client:
+npm run prisma:generate
+
+Run migrations:
+npx prisma migrate dev
+
+Open Prisma Studio:
+px prisma studio
+
+Notes
+- Prisma v7 uses prisma.config.ts for datasource configuration.
+- .env is required locally but must NOT be committed.
+```
+
 
 ## Resources
 
