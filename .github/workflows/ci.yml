@@ -8,6 +8,8 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trainee_wallet
 
     steps:
       - name: Checkout repo
@@ -21,6 +23,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      - name: Generate Prisma Client
+        run: npm run prisma:generate
+
 
       - name: Lint
         run: npm run lint
