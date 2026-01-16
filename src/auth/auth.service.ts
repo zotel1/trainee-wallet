@@ -7,12 +7,12 @@ type RegisterInput = {
   password: string;
 };
 
-function hasCode(e: unknow): e is { code: string } {
+function hasCode(e: unknown): e is { code: string } {
   return (
     typeof e === 'object' &&
     e !== null &&
     'code' in e &&
-    typeof (e as { codee?: unknown }).code === 'string'
+    typeof (e as { code?: unknown }).code === 'string'
   );
 }
 
