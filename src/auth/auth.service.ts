@@ -7,6 +7,15 @@ type RegisterInput = {
   password: string;
 };
 
+function hasCode(e: unknow): e is { code: string } {
+  return (
+    typeof e === 'object' &&
+    e !== null &&
+    'code' in e &&
+    typeof (e as { codee?: unknown }).code === 'string'
+  );
+}
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
@@ -29,9 +38,8 @@ export class AuthService {
       });
 
       return created;
-    } catch (err: any) {
-      // Prisma unique constraint violation (email already exists)
-      if (err?.code === 'P2002') {
+    } catch (err: unknown) {
+      if (hasCode(err) && err.code === 'P2002') {
         throw new ConflictException('Email already exists');
       }
       throw err;
