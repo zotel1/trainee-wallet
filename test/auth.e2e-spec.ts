@@ -4,9 +4,17 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 
+type RegisteredUserResponse = {
+  id: string;
+  email: string;
+  role: 'USER' | 'ADMIN';
+  createdAt: string;
+};
+
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let server: unknown;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -15,7 +23,6 @@ describe('Auth (e2e)', () => {
 
     app = moduleRef.createNestApplication();
 
-    // En e2e No corre main.ts, por eso configuramos pipes aca
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -26,10 +33,10 @@ describe('Auth (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+    server = app.getHttpServer();
   });
 
   beforeEach(async () => {
-    // Limpieza por test para que sean deterministicos
     await prisma.user.deleteMany();
   });
 
@@ -38,32 +45,34 @@ describe('Auth (e2e)', () => {
   });
 
   it('POST /auth/register -> 201 and returns user without password', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await request(server as Parameters<typeof request>[0])
       .post('/auth/register')
-      .send({ email: 'user1@latest.com', password: '123456' })
-      .expect(201);
-
-    expect(res.body).toHaveProperty('id');
-    expect(res.body.email).toBe('user1@test.com');
-    expect(res.body).not.toHaveProperty('password');
-  });
-
-  it('POST /auth/register -> 409 if email', async () => {
-    await request(app.getHttpServer())
-      .post('/auth/')
       .send({ email: 'user1@test.com', password: '123456' })
       .expect(201);
 
-    await request(app.getHttpServer())
+    const body = res.body as RegisteredUserResponse;
+
+    expect(body).toHaveProperty('id');
+    expect(body.email).toBe('user1@test.com');
+    expect(body).not.toHaveProperty('password');
+  });
+
+  it('POST /auth/register -> 409 if email already exists', async () => {
+    await request(server as Parameters<typeof request>[0])
+      .post('/auth/register')
+      .send({ email: 'user1@test.com', password: '123456' })
+      .expect(201);
+
+    await request(server as Parameters<typeof request>[0])
       .post('/auth/register')
       .send({ email: 'user1@test.com', password: '123456' })
       .expect(409);
   });
 
   it('POST /auth/register -> 400 on invalid payload', async () => {
-    await request(app.getHttpServer())
+    await request(server as Parameters<typeof request>[0])
       .post('/auth/register')
-      .send({ email: 'no-es-un-email', password: '123' })
+      .send({ email: 'no-es-email', password: '123' })
       .expect(400);
   });
 });
