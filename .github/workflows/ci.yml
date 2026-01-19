@@ -8,8 +8,25 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: trainee_wallet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d trainee_wallet_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trainee_wallet
+      # Importante: apuntamos a la DB de TEST del service
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trainee_wallet_test
 
     steps:
       - name: Checkout repo
@@ -23,9 +40,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
       - name: Generate Prisma Client
         run: npm run prisma:generate
 
+      # Aplicamos migraciones a la DB del CI antes de e2e
+      - name: Run Prisma migrations (deploy)
+        run: npx prisma migrate deploy
 
       - name: Lint
         run: npm run lint
