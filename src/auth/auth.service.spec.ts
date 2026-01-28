@@ -1,9 +1,14 @@
 import { Test } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { JwtService } from '@nestjs/jwt';
 
 describe('AuthService - register', () => {
   let service: AuthService;
+
+  const jwtMock = {
+    signAsync: jest.fn(),
+  };
 
   const prismaMock = {
     user: {
@@ -15,7 +20,11 @@ describe('AuthService - register', () => {
     prismaMock.user.create.mockReset();
 
     const module = await Test.createTestingModule({
-      providers: [AuthService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        AuthService,
+        { provide: PrismaService, useValue: prismaMock },
+        { provide: JwtService, useValue: jwtMock },
+      ],
     }).compile();
 
     service = module.get(AuthService);

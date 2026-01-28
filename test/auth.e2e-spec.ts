@@ -69,6 +69,20 @@ describe('Auth (e2e)', () => {
       .expect(409);
   });
 
+  it('POST /auth/register -> 409 if email already exists', async () => {
+    // 1) primer register -> debe crear
+    await request(server as Parameters<typeof request>[0])
+      .post('/auth/register')
+      .send({ email: 'user1@test.com', password: '123456' })
+      .expect(201);
+
+    // 2) segundo register con el mismo email -> debe fallar
+    await request(server as Parameters<typeof request>[0])
+      .post('/auth/register')
+      .send({ email: 'user1@test.com', password: '123456' })
+      .expect(409);
+  });
+
   it('POST /auth/register -> 400 on invalid payload', async () => {
     await request(server as Parameters<typeof request>[0])
       .post('/auth/register')
