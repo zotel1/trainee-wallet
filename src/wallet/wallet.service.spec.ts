@@ -45,7 +45,6 @@ describe('WalletService - createAccountForUser', () => {
       balance: 100,
     });
 
-    await expect(service.createAccountForUser('user-1'),
-).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.createAccountForUser('user-1')).rejects.toBeInstanceOf(ConflictException);
   });
 });
