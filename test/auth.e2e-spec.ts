@@ -3,18 +3,13 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-
-type RegisteredUserResponse = {
-  id: string;
-  email: string;
-  role: 'USER' | 'ADMIN';
-  createdAt: string;
-};
+import { cleanupUserData } from './helpers/cleanup';
+import { uniqueEmail } from './helpers/auth';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let server: unknown;
+  const createdUserIds: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -33,11 +28,11 @@ describe('Auth (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    server = app.getHttpServer();
   });
 
-  beforeEach(async () => {
-    await prisma.user.deleteMany();
+  afterEach(async () => {
+    await cleanupUserData(prisma, createdUserIds);
+    createdUserIds.length = 0;
   });
 
   afterAll(async () => {
@@ -45,46 +40,35 @@ describe('Auth (e2e)', () => {
   });
 
   it('POST /auth/register -> 201 and returns user without password', async () => {
-    const res = await request(server as Parameters<typeof request>[0])
+    const email = uniqueEmail('user');
+    const res = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
+      .send({ email, password: '123456' })
       .expect(201);
 
-    const body = res.body as RegisteredUserResponse;
+    createdUserIds.push(res.body.id);
 
-    expect(body).toHaveProperty('id');
-    expect(body.email).toBe('user1@test.com');
-    expect(body).not.toHaveProperty('password');
+    expect(res.body.email).toBe(email);
+    expect(res.body).not.toHaveProperty('password');
   });
 
   it('POST /auth/register -> 409 if email already exists', async () => {
-    await request(server as Parameters<typeof request>[0])
+    const email = uniqueEmail('dup');
+    const res1 = await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
+      .send({ email, password: '123456' })
       .expect(201);
 
-    await request(server as Parameters<typeof request>[0])
-      .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
-      .expect(409);
-  });
+    createdUserIds.push(res1.body.id);
 
-  it('POST /auth/register -> 409 if email already exists', async () => {
-    // 1) primer register -> debe crear
-    await request(server as Parameters<typeof request>[0])
+    await request(app.getHttpServer())
       .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
-      .expect(201);
-
-    // 2) segundo register con el mismo email -> debe fallar
-    await request(server as Parameters<typeof request>[0])
-      .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
+      .send({ email, password: '123456' })
       .expect(409);
   });
 
   it('POST /auth/register -> 400 on invalid payload', async () => {
-    await request(server as Parameters<typeof request>[0])
+    await request(app.getHttpServer())
       .post('/auth/register')
       .send({ email: 'no-es-email', password: '123' })
       .expect(400);

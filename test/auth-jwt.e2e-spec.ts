@@ -3,13 +3,13 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-
-type LoginResponse = { access_token: string };
+import { cleanupUserData } from './helpers/cleanup';
+import { registerAndLogin } from './helpers/auth';
 
 describe('Auth JWT (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let server: unknown;
+  const createdUserIds: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -28,11 +28,6 @@ describe('Auth JWT (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    server = app.getHttpServer();
-  });
-
-  beforeEach(async () => {
-    await prisma.user.deleteMany();
   });
 
   afterAll(async () => {
@@ -40,39 +35,27 @@ describe('Auth JWT (e2e)', () => {
   });
 
   it('register -> login -> /auth/me returns 200 with user payload', async () => {
-    await request(server as Parameters<typeof request>[0])
-      .post('/auth/register')
-      .send({ email: 'me@test.com', password: '123456' })
-      .expect(201);
+    const { token, email, userId } = await registerAndLogin(app, 'me');
+    createdUserIds.push(userId);
 
-    const loginRes = await request(server as Parameters<typeof request>[0])
-      .post('/auth/login')
-      .send({ email: 'me@test.com', password: '123456' })
-      .expect(201);
-
-    const loginBody = loginRes.body as LoginResponse;
-    expect(typeof loginBody.access_token).toBe('string');
-
-    const meRes = await request(server as Parameters<typeof request>[0])
+    const meRes = await request(app.getHttpServer())
       .get('/auth/me')
-      .set('Authorization', `Bearer ${loginBody.access_token}`)
+      .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
     expect(meRes.body).toMatchObject({
-      email: 'me@test.com',
+      email,
       role: 'USER',
     });
     expect(meRes.body).toHaveProperty('userId');
   });
 
   it('/auth/me without token returns 401', async () => {
-    await request(server as Parameters<typeof request>[0])
-      .get('/auth/me')
-      .expect(401);
+    await request(app.getHttpServer()).get('/auth/me').expect(401);
   });
 
   it('/auth/me with invalid token returns 401', async () => {
-    await request(server as Parameters<typeof request>[0])
+    await request(app.getHttpServer())
       .get('/auth/me')
       .set('Authorization', 'Bearer invalid.token.here')
       .expect(401);

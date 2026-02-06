@@ -4,6 +4,11 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 
+function uniqueEmail(prefix: string) {
+  const worker = process.env.JEST_WORKER_ID ?? '0';
+  return `${prefix}_${Date.now()}_${worker}@test.com`;
+}
+
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
