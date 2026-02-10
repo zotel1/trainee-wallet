@@ -6,7 +6,17 @@ El objetivo del proyecto es simular un entorno real de trabajo backend utilizand
 
 ---
 
-## Stack tecbológico
+## RBAC(Role-Based Access Control)
+**Agregamos un endpoint de admin(/auth/admin/ping)**
+- **Cómo se protege:**
+- **JwtAuthGuard(requiere token)**
+- **RolesGuard(requiere rol)**
+- **@Roles('ADMIN')**
+**Que devuelve:**
+- **401 sin token**
+- **403 con token pero rol USER**
+
+## Stack tecnológico
 
 - **Node.js**
 - **NestJS**
