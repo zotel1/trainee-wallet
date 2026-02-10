@@ -6,9 +6,19 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { cleanupUserData } from './helpers/cleanup';
 import { registerAndLogin } from './helpers/auth';
 
+type ServerLike = Parameters<typeof request>[0];
+
+type AccountResponse = {
+  id: string;
+  userId: string;
+  balance: number;
+  createdAt: string;
+};
+
 describe('Wallet (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let server: ServerLike;
   const createdUserIds: string[] = [];
 
   beforeAll(async () => {
@@ -19,6 +29,7 @@ describe('Wallet (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+    server = app.getHttpServer() as ServerLike;
   });
 
   afterEach(async () => {
@@ -31,33 +42,34 @@ describe('Wallet (e2e)', () => {
   });
 
   it('POST /wallet/account -> 401 without token', async () => {
-    await request(app.getHttpServer()).post('/wallet/account').expect(401);
+    await request(server).post('/wallet/account').expect(401);
   });
 
   it('POST /wallet/account -> 201 creates account for authenticated user', async () => {
     const { token, userId } = await registerAndLogin(app, 'wallet');
     createdUserIds.push(userId);
 
-    const res = await request(app.getHttpServer())
+    const res = await request(server)
       .post('/wallet/account')
       .set('Authorization', `Bearer ${token}`)
       .expect(201);
+    const body = res.body as AccountResponse;
 
-    expect(res.body).toHaveProperty('id');
-    expect(res.body).toHaveProperty('userId');
-    expect(res.body.balance).toBe(0);
+    expect(body).toHaveProperty('id');
+    expect(body).toHaveProperty('userId');
+    expect(body.balance).toBe(0);
   });
 
   it('POST /wallet/account -> 409 if account already exists', async () => {
     const { token, userId } = await registerAndLogin(app, 'walletdup');
     createdUserIds.push(userId);
 
-    await request(app.getHttpServer())
+    await request(server)
       .post('/wallet/account')
       .set('Authorization', `Bearer ${token}`)
       .expect(201);
 
-    await request(app.getHttpServer())
+    await request(server)
       .post('/wallet/account')
       .set('Authorization', `Bearer ${token}`)
       .expect(409);
