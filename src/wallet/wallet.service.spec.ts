@@ -34,7 +34,7 @@ describe('WalletService - createAccountForUser', () => {
     });
 
     const account = await service.createAccountForUser('user-1');
-    expect(account.userId).toBe('u-1');
+    expect(account.userId).toBe('user-1');
 
     expect(prismaMock.account.create).toHaveBeenCalledTimes(1);
   });
