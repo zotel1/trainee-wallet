@@ -3,8 +3,12 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { cleanupUserData } from './helpers/cleanup';
+import { uniqueEmail } from './helpers/auth';
 
-type RegisteredUserResponse = {
+type ServerLike = Parameters<typeof request>[0];
+
+type RegisterResponse = {
   id: string;
   email: string;
   role: 'USER' | 'ADMIN';
@@ -14,7 +18,9 @@ type RegisteredUserResponse = {
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
-  let server: unknown;
+  let server: ServerLike;
+
+  const createdUserIds: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -23,6 +29,7 @@ describe('Auth (e2e)', () => {
 
     app = moduleRef.createNestApplication();
 
+    // En e2e NO corre main.ts, por eso configuramos pipes acá
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -33,11 +40,12 @@ describe('Auth (e2e)', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-    server = app.getHttpServer();
+    server = app.getHttpServer() as ServerLike;
   });
 
-  beforeEach(async () => {
-    await prisma.user.deleteMany();
+  afterEach(async () => {
+    await cleanupUserData(prisma, createdUserIds);
+    createdUserIds.length = 0;
   });
 
   afterAll(async () => {
@@ -45,46 +53,37 @@ describe('Auth (e2e)', () => {
   });
 
   it('POST /auth/register -> 201 and returns user without password', async () => {
-    const res = await request(server as Parameters<typeof request>[0])
+    const email = uniqueEmail('user');
+
+    const res = await request(server)
       .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
+      .send({ email, password: '123456' })
       .expect(201);
 
-    const body = res.body as RegisteredUserResponse;
+    const body = res.body as RegisterResponse;
 
-    expect(body).toHaveProperty('id');
-    expect(body.email).toBe('user1@test.com');
-    expect(body).not.toHaveProperty('password');
+    createdUserIds.push(body.id);
+
+    expect(body.email).toBe(email);
+    expect(res.body).not.toHaveProperty('password');
   });
 
   it('POST /auth/register -> 409 if email already exists', async () => {
-    await request(server as Parameters<typeof request>[0])
+    const email = uniqueEmail('dup');
+
+    const res1 = await request(server)
       .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
+      .send({ email, password: '123456' })
       .expect(201);
 
-    await request(server as Parameters<typeof request>[0])
-      .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
-      .expect(409);
-  });
+    const body1 = res1.body as RegisterResponse;
+    createdUserIds.push(body1.id);
 
-  it('POST /auth/register -> 409 if email already exists', async () => {
-    // 1) primer register -> debe crear
-    await request(server as Parameters<typeof request>[0])
-      .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
-      .expect(201);
-
-    // 2) segundo register con el mismo email -> debe fallar
-    await request(server as Parameters<typeof request>[0])
-      .post('/auth/register')
-      .send({ email: 'user1@test.com', password: '123456' })
-      .expect(409);
+    await request(server).post('/auth/register').send({ email, password: '123456' }).expect(409);
   });
 
   it('POST /auth/register -> 400 on invalid payload', async () => {
-    await request(server as Parameters<typeof request>[0])
+    await request(server)
       .post('/auth/register')
       .send({ email: 'no-es-email', password: '123' })
       .expect(400);
