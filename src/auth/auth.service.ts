@@ -74,4 +74,16 @@ export class AuthService {
 
     return { access_token: token };
   }
+
+  async adminListUsers() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }
