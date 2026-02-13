@@ -33,4 +33,11 @@ export class AuthController {
   adminPing() {
     return { ok: true };
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('admin/users')
+  adminUsers() {
+    return this.authService.adminListUsers();
+  }
 }
