@@ -86,4 +86,16 @@ export class AuthService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async findAllUsersAdmin() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }
