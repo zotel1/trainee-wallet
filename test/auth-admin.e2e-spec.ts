@@ -47,6 +47,13 @@ describe('Auth Admin (e2e)', () => {
     await request(server).get('/auth/admin/users').expect(401);
   });
 
+  it('GET /auth/admin/users -> 401 with invalid token', async () => {
+    await request(server)
+      .get('/auth/admin/users')
+      .set('Authorization', 'Bearer invalid.token.here')
+      .expect(401);
+  });
+
   it('GET /auth/admin/users -> 403 with USER token', async () => {
     const { token } = await registerAndLogin(app, 'adminusers_user');
 
